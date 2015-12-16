@@ -1,0 +1,294 @@
+/* - InterfaceKit simple -
+ ****************************************************************************************
+ * This simple example creates an Interfacekit object, hooks the event handlers, and 
+ * opens it for connections to IntefaceKit Phidgets.  It will then wait for user input to 
+ * terminate, and in the meantime, display event generated data from the InterfaceKit. 
+ * For a more detailed example, please see the InterfaceKit-full example.
+ *
+ * Please note that this example was designed to work with only one Phidget InterfaceKit 
+ * connected. 
+ * For an example showing how to use two Phidgets of the same time concurrently, please see the
+ * Servo-multi example in the Servo Examples.
+ *
+ * Copyright 2007 Phidgets Inc.  
+ * This work is licensed under the Creative Commons Attribution 2.5 Canada License. 
+ * To view a copy of this license, visit http://creativecommons.org/licenses/by/2.5/ca/
+ */
+
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+//Needed for the InterfaceKit class, phidget base classes, and the PhidgetException class
+using Phidgets;
+//Needed for the event handling classes 
+using Phidgets.Events;  
+namespace InterfaceKit_simple
+{
+    class Program
+    {
+        //Declare an InterfaceKit object
+        static InterfaceKit ifKit;
+        static TextLCD tLCD;
+
+        static void Main(string[] args)
+        {
+            try
+            {
+                //Initialize the InterfaceKit object
+                ifKit = new InterfaceKit();
+
+                //Hook the basica event handlers
+                ifKit.Attach += new AttachEventHandler(ifKit_Attach);
+                ifKit.Detach += new DetachEventHandler(ifKit_Detach);
+                ifKit.Error += new ErrorEventHandler(ifKit_Error);
+
+                //Hook the phidget spcific event handlers
+                ifKit.InputChange += new InputChangeEventHandler(ifKit_InputChange);
+                ifKit.OutputChange += new OutputChangeEventHandler(ifKit_OutputChange);
+                ifKit.SensorChange += new SensorChangeEventHandler(ifKit_SensorChange);
+
+                //Open the object for device connections
+                ifKit.open();
+                tLCD = new TextLCD();
+                
+
+                tLCD.Attach += new AttachEventHandler(tLCD_Attach);
+                tLCD.Detach += new DetachEventHandler(tLCD_Detach);
+                tLCD.Error += new ErrorEventHandler(tLCD_Error);
+
+                tLCD.open();
+
+
+
+                //Wait for an InterfaceKit phidget to be attached
+                Console.WriteLine("Waiting for shit to be attached...");
+                ifKit.waitForAttachment();
+                tLCD.waitForAttachment();
+                
+                tLCD.screens[0].ScreenSize = TextLCD.ScreenSizes._4x20;
+
+                if (tLCD.Attached)
+                {
+                    printOnStart();
+                    tLCD.Backlight = true;
+                }
+
+               
+                //Wait for user input so that we can wait and watch for some event data 
+                //from the phidget
+                Console.WriteLine("Press any key to end...");
+                Console.Read();
+
+                //User input was rad so we'll terminate the program, so close the object
+                ifKit.close();
+                tLCD.close();
+
+                //set the object to null to get it out of memory
+                ifKit = null;
+                tLCD = null;
+
+                //If no expcetions where thrown at this point it is safe to terminate 
+                //the program
+                Console.WriteLine("ok");
+            }
+            catch (PhidgetException ex)
+            {
+                Console.WriteLine(ex.Description);
+            }
+        }
+
+        public static void assWarmer(SensorChangeEventArgs e) { 
+         if (e.Index == 4)
+         {
+             if (e.Value > 300)
+             {
+                 ifKit.outputs[4] = true;
+             }
+             else
+             {
+                 ifKit.outputs[4] = false;
+             }
+         }
+        }
+
+        public async static void pplFinder(SensorChangeEventArgs e)
+        {
+            if (e.Index == 7)
+            {
+                if (e.Value > 530)
+                {
+                    ifKit.outputs[5] = true;
+                    await Task.Delay(10000);
+                    ifKit.outputs[5] = false;
+
+                }
+            }
+        }
+
+        public static void printOnStart()
+        {
+
+            //Distance (cm) = 4800/(SensorValue - 20)
+
+            int tempvalue = ifKit.sensors[6].Value;
+            double temp = tempvalue * 0.2222 - 61.1111;
+
+            int distvalue = ifKit.sensors[3].Value;
+            double dist = 4800 / (distvalue - 20);
+            tLCD.screens[0].rows[0].DisplayString = "Next arrival:";
+            tLCD.screens[0].rows[1].DisplayString = "Distance: " + dist.ToString()+"km";
+            tLCD.screens[0].rows[3].DisplayString = "Temperature: "+ temp.ToString();
+        }
+
+        public async static void printDist(SensorChangeEventArgs e)
+        {
+            if (e.Index == 3)
+            {
+                double dist = 4800 / (e.Value - 20);
+
+                if (dist < 40)
+                {
+                    ifKit.outputs[6] = true;
+                    await Task.Delay(5000);
+                    ifKit.outputs[6] = false;
+                }
+
+                int vel = 50;
+                double eta = dist / vel * 60;
+                if (tLCD.Attached)
+                {
+                    tLCD.screens[0].rows[0].DisplayString = "Arrives in:"+eta.ToString()+"min";
+                    tLCD.screens[0].rows[1].DisplayString = "Distance:"+dist.ToString()+"km";
+                }
+            }
+        }
+
+        public static void printTemp(SensorChangeEventArgs e)
+        {
+            if (e.Index == 6)
+            {
+                double temp = e.Value * 0.2222 - 61.1111; 
+                if (temp < 30)
+                {
+                    ifKit.outputs[3] = true;
+                }
+                else
+                {
+                    ifKit.outputs[3] = false;
+                }
+                if (tLCD.Attached)
+                {
+                    tLCD.screens[0].rows[3].DisplayString = temp.ToString();
+                }
+            }
+        }
+
+        public async static void map(SensorChangeEventArgs e)
+        {
+            if (e.Index == 5)
+            {
+                if (e.Value > 800)
+                {
+                    ifKit.outputs[1] = true;
+                    ifKit.outputs[2] = true;
+                    await Task.Delay(10000);
+                    ifKit.outputs[1] = false;
+                    ifKit.outputs[2] = false;
+                }
+
+            }
+
+        }
+
+        public async static void redLight(OutputChangeEventArgs e)
+        {
+            if(e.Index == 6){
+                if(e.Value == false){
+                    ifKit.outputs[7] = true;
+                    await Task.Delay(5000);
+                    ifKit.outputs[7] = false;
+             }
+            }
+            
+        }
+
+        //Sensor Change event handler...Display the sensor index and it's new value to 
+        //the console
+        static void ifKit_SensorChange(object sender, SensorChangeEventArgs e)
+        {
+            Console.WriteLine("Sensor index {0} value {1}", e.Index, e.Value);
+            assWarmer(e);
+            pplFinder(e);
+            map(e);
+            printDist(e);
+            printTemp(e);
+        }
+
+        //Attach event handler...Display the serial number of the attached InterfaceKit 
+        //to the console
+        static void ifKit_Attach(object sender, AttachEventArgs e)
+        {
+            Console.WriteLine("InterfaceKit {0} attached!",
+                                e.Device.SerialNumber.ToString());
+        }
+
+        //Detach event handler...Display the serial number of the detached InterfaceKit 
+        //to the console
+        static void ifKit_Detach(object sender, DetachEventArgs e)
+        {
+            Console.WriteLine("InterfaceKit {0} detached!",
+                                e.Device.SerialNumber.ToString());
+        }
+
+        //Error event handler...Display the error description to the console
+        static void ifKit_Error(object sender, ErrorEventArgs e)
+        {
+            Console.WriteLine(e.Description);
+        }
+
+        //Input Change event handler...Display the input index and the new value to the 
+        //console
+        static void ifKit_InputChange(object sender, InputChangeEventArgs e)
+        {
+            Console.WriteLine("Input index {0} value (1)", e.Index, e.Value.ToString());
+        }
+
+        //Output change event handler...Display the output index and the new valu to 
+        //the console
+        static void ifKit_OutputChange(object sender, OutputChangeEventArgs e)
+        {
+            Console.WriteLine("Output index {0} value {0}", e.Index, e.Value.ToString());
+            redLight(e);
+        }
+
+        static void tLCD_Attach(object sender, AttachEventArgs e)
+        {
+            TextLCD attached = (TextLCD)sender;
+            string name = attached.Name;
+            string serialNo = attached.SerialNumber.ToString();
+
+            Console.WriteLine("TextLCD name:{0} serial No.: {1} Attached!", name,
+                                    serialNo);
+        }
+
+        //Detach event handler, we'll output the name and serial of the phidget that is
+        //detached
+        static void tLCD_Detach(object sender, DetachEventArgs e)
+        {
+            TextLCD detached = (TextLCD)sender;
+            string name = detached.Name;
+            string serialNo = detached.SerialNumber.ToString();
+
+            Console.WriteLine("TextLCD name:{0} serial No.: {1} Detached!", name,
+                                    serialNo);
+        }
+
+        //TextLCD error event handler, we'll just output any error data to the console
+        static void tLCD_Error(object sender, ErrorEventArgs e)
+        {
+            Console.WriteLine("LCD Error: e.Description");
+        }
+    }
+}
