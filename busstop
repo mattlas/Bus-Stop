@@ -1,8 +1,3 @@
-/*
- * This simple example creates an Interfacekit object, hooks the event handlers, and 
- * opens it for connections to IntefaceKit Phidgets.  It will then wait for user input to 
- * terminate, and in the meantime, display event generated data from the InterfaceKit.
- */
 
 using System;
 using System.Collections.Generic;
