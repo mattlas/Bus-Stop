@@ -1,18 +1,7 @@
-/* - InterfaceKit simple -
- ****************************************************************************************
+/*
  * This simple example creates an Interfacekit object, hooks the event handlers, and 
  * opens it for connections to IntefaceKit Phidgets.  It will then wait for user input to 
- * terminate, and in the meantime, display event generated data from the InterfaceKit. 
- * For a more detailed example, please see the InterfaceKit-full example.
- *
- * Please note that this example was designed to work with only one Phidget InterfaceKit 
- * connected. 
- * For an example showing how to use two Phidgets of the same time concurrently, please see the
- * Servo-multi example in the Servo Examples.
- *
- * Copyright 2007 Phidgets Inc.  
- * This work is licensed under the Creative Commons Attribution 2.5 Canada License. 
- * To view a copy of this license, visit http://creativecommons.org/licenses/by/2.5/ca/
+ * terminate, and in the meantime, display event generated data from the InterfaceKit.
  */
 
 using System;
@@ -36,39 +25,31 @@ namespace InterfaceKit_simple
         {
             try
             {
-                //Initialize the InterfaceKit object
+                //Connect and open the InterFaceKit
                 ifKit = new InterfaceKit();
-
-                //Hook the basica event handlers
                 ifKit.Attach += new AttachEventHandler(ifKit_Attach);
                 ifKit.Detach += new DetachEventHandler(ifKit_Detach);
                 ifKit.Error += new ErrorEventHandler(ifKit_Error);
-
-                //Hook the phidget spcific event handlers
                 ifKit.InputChange += new InputChangeEventHandler(ifKit_InputChange);
                 ifKit.OutputChange += new OutputChangeEventHandler(ifKit_OutputChange);
                 ifKit.SensorChange += new SensorChangeEventHandler(ifKit_SensorChange);
-
-                //Open the object for device connections
                 ifKit.open();
-                tLCD = new TextLCD();
                 
-
+                // Connect and open the LCD phidget
+                tLCD = new TextLCD();
                 tLCD.Attach += new AttachEventHandler(tLCD_Attach);
                 tLCD.Detach += new DetachEventHandler(tLCD_Detach);
                 tLCD.Error += new ErrorEventHandler(tLCD_Error);
-
                 tLCD.open();
 
-
-
-                //Wait for an InterfaceKit phidget to be attached
-                Console.WriteLine("Waiting for shit to be attached...");
+                //Wait for an InterfaceKit and LCD-screen to be attached
+                Console.WriteLine("Waiting for phidgets to be attached...");
                 ifKit.waitForAttachment();
                 tLCD.waitForAttachment();
                 
+                
+                // Print some stuff on the LCD on startup
                 tLCD.screens[0].ScreenSize = TextLCD.ScreenSizes._4x20;
-
                 if (tLCD.Attached)
                 {
                     printOnStart();
@@ -76,8 +57,7 @@ namespace InterfaceKit_simple
                 }
 
                
-                //Wait for user input so that we can wait and watch for some event data 
-                //from the phidget
+                //Wait for user input so that we can wait and watch for some event data
                 Console.WriteLine("Press any key to end...");
                 Console.Read();
 
@@ -98,7 +78,8 @@ namespace InterfaceKit_simple
                 Console.WriteLine(ex.Description);
             }
         }
-
+        
+        // Turns on the heating on the bench in the bus stop
         public static void assWarmer(SensorChangeEventArgs e) { 
          if (e.Index == 4)
          {
@@ -112,7 +93,8 @@ namespace InterfaceKit_simple
              }
          }
         }
-
+        
+        // Turns on a white light in the bus stop when a person arrives
         public async static void pplFinder(SensorChangeEventArgs e)
         {
             if (e.Index == 7)
@@ -127,6 +109,7 @@ namespace InterfaceKit_simple
             }
         }
 
+        // Prints stuff on the LCD on startup of program
         public static void printOnStart()
         {
 
@@ -142,6 +125,7 @@ namespace InterfaceKit_simple
             tLCD.screens[0].rows[3].DisplayString = "Temperature: "+ temp.ToString();
         }
 
+        // Prints distance and estimated time of arrival on the LCD
         public async static void printDist(SensorChangeEventArgs e)
         {
             if (e.Index == 3)
@@ -165,6 +149,7 @@ namespace InterfaceKit_simple
             }
         }
 
+        // Calculates temperature and prints it on the LCD
         public static void printTemp(SensorChangeEventArgs e)
         {
             if (e.Index == 6)
@@ -185,6 +170,7 @@ namespace InterfaceKit_simple
             }
         }
 
+        // Turns on lights when "clicking" on the map
         public async static void map(SensorChangeEventArgs e)
         {
             if (e.Index == 5)
@@ -202,6 +188,7 @@ namespace InterfaceKit_simple
 
         }
 
+        // Starts a red light after bus has left the bus stop
         public async static void redLight(OutputChangeEventArgs e)
         {
             if(e.Index == 6){
@@ -216,6 +203,7 @@ namespace InterfaceKit_simple
 
         //Sensor Change event handler...Display the sensor index and it's new value to 
         //the console
+        // Runs methods that depends on sensor input
         static void ifKit_SensorChange(object sender, SensorChangeEventArgs e)
         {
             Console.WriteLine("Sensor index {0} value {1}", e.Index, e.Value);
@@ -257,6 +245,8 @@ namespace InterfaceKit_simple
 
         //Output change event handler...Display the output index and the new valu to 
         //the console
+        // When the green light that shows that a bus will arrive soon turns off, the 
+        // red light will start.
         static void ifKit_OutputChange(object sender, OutputChangeEventArgs e)
         {
             Console.WriteLine("Output index {0} value {0}", e.Index, e.Value.ToString());
